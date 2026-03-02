@@ -276,7 +276,7 @@
 
       <div id="loading" role="status" aria-live="polite">
         <div class="spinner" aria-hidden="true"></div>
-        <span>Fetching release data&#8230;</span>
+        <span>Fetching release data&#8230; (may use CORS proxy for older releases)</span>
       </div>
 
       <div id="results" role="region" aria-label="Comparison results" aria-live="polite"></div>
@@ -462,6 +462,7 @@
     ];
 
     const API_BASE     = 'https://online-help.sagex3.com/x3-release-notes/api';
+    const CORS_PROXY   = 'https://corsproxy.io/?url=';
     const CACHE_PREFIX = 'sage_x3_rel_v2_';
 
     const FUNCTIONAL_AREAS = [
@@ -518,17 +519,22 @@
         console.warn('No txtUrl for', release.id, '— using demo data');
         return generateDemoChanges(release);
       }
-      try {
-        const res = await fetch(release.txtUrl, { mode: 'cors' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
-        const changes = Parser.parseReleaseText(text, release.id, release.version);
-        setToCache(release.id, changes);
-        return changes;
-      } catch(e) {
-        console.warn('Fetch failed for', release.id, '— using demo data');
-        return generateDemoChanges(release);
+      // Try direct fetch first; if CORS-blocked, retry via corsproxy.io
+      const urlsToTry = [release.txtUrl, CORS_PROXY + encodeURIComponent(release.txtUrl)];
+      for (const url of urlsToTry) {
+        try {
+          const res = await fetch(url, { mode: 'cors' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          const changes = Parser.parseReleaseText(text, release.id, release.version);
+          setToCache(release.id, changes);
+          return changes;
+        } catch(e) {
+          console.warn('Fetch failed for', release.id, 'via', url, '—', e.message);
+        }
       }
+      console.warn('All fetch attempts failed for', release.id, '— using demo data');
+      return generateDemoChanges(release);
     }
 
     /* Demo data */
@@ -814,7 +820,7 @@
       document.getElementById('btn-refresh').addEventListener('click', () => {
         clearCache();
         const b = document.getElementById('cache-banner');
-        b.textContent = 'Cache cleared. Next comparison will fetch live data.';
+        b.textContent = 'Cache cleared. Next comparison will fetch live data (via CORS proxy if needed).';
         b.style.display = 'block';
         setTimeout(() => { b.style.display = 'none'; }, 3000);
       });
