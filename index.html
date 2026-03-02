@@ -445,23 +445,24 @@
      App
   ============================================================ */
   const App = (() => {
+    // Release IDs verified against live Sage URLs (March 2026).
+    // txtUrl is the confirmed-working applicative readme for each release.
+    // 12.0.39 is not yet published; txtUrl left null — no link pill will render.
     const RELEASE_REGISTRY = [
-      { id: '2022-r1-30', version: '12.0.30', label: 'V12 R1 (12.0.30)' },
-      { id: '2022-r2-31', version: '12.0.31', label: 'V12 R2 (12.0.31)' },
-      { id: '2023-r1-32', version: '12.0.32', label: 'V12 R3 (12.0.32)' },
-      { id: '2023-r2-33', version: '12.0.33', label: 'V12 R4 (12.0.33)' },
-      { id: '2023-r3-34', version: '12.0.34', label: 'V12 R5 (12.0.34)' },
-      { id: '2024-r1-35', version: '12.0.35', label: 'V12 R6 (12.0.35)' },
-      { id: '2024-r2-36', version: '12.0.36', label: 'V12 R7 (12.0.36)' },
-      { id: '2024-r3-37', version: '12.0.37', label: 'V12 R8 (12.0.37)' },
-      { id: '2025-r1-38', version: '12.0.38', label: 'V12 R9 (12.0.38)' },
-      { id: '2025-r2-39', version: '12.0.39', label: 'V12 R10 (12.0.39)' },
+      { id: '2022-r2-30', version: '12.0.30', label: 'V12 2022 R2 (12.0.30)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2022-r2-30/Readme-X3-ENG-12.0.30.txt' },
+      { id: '2022-r3-31', version: '12.0.31', label: 'V12 2022 R3 (12.0.31)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2022-r3-31/Readme-X3-ENG-12.0.31.txt' },
+      { id: '2022-r4-32', version: '12.0.32', label: 'V12 2022 R4 (12.0.32)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2022-r4-32/Readme-X3-ENG-12.0.32.txt' },
+      { id: '2023-r1-33', version: '12.0.33', label: 'V12 2023 R1 (12.0.33)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2023-r1-33/Readme-X3-ENG-12.0.33.txt' },
+      { id: '2023-r2-34', version: '12.0.34', label: 'V12 2023 R2 (12.0.34)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2023-r2-34/Readme-X3-ENG-12.0.34.txt' },
+      { id: '2024-r1-35', version: '12.0.35', label: 'V12 2024 R1 (12.0.35)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2024-r1-35/Readme-X3-ENG-12.0.35.txt' },
+      { id: '2024-r2-36', version: '12.0.36', label: 'V12 2024 R2 (12.0.36)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2024-r2-36/Readme-X3-ENG-12.0.36.txt' },
+      { id: '2025-r1-37', version: '12.0.37', label: 'V12 2025 R1 (12.0.37)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2025-r1-37/Readme-X3-ENG-12.0.37.txt' },
+      { id: '2025-r2-38', version: '12.0.38', label: 'V12 2025 R2 (12.0.38)', txtUrl: 'https://online-help.sagex3.com/x3-release-notes/api/en-US/2025-r2-38/Readme-X3-ENG-12.0.38.txt' },
+      { id: '2025-r3-39', version: '12.0.39', label: 'V12 2025 R3 (12.0.39)', txtUrl: null },
     ];
 
-    // Base URL for release note HTML pages
-    const RELNOTES_BASE = 'https://online-help.sagex3.com/x3-release-notes';
-    const API_BASE      = 'https://online-help.sagex3.com/x3-release-notes/api';
-    const CACHE_PREFIX  = 'sage_x3_rel_v2_';
+    const API_BASE     = 'https://online-help.sagex3.com/x3-release-notes/api';
+    const CACHE_PREFIX = 'sage_x3_rel_v2_';
 
     const FUNCTIONAL_AREAS = [
       'Finance','Accounting','Fixed Assets','Accounts Payable','Accounts Receivable',
@@ -513,10 +514,13 @@
     async function fetchRelease(release) {
       const cached = getFromCache(release.id);
       if (cached) return cached;
-      const url = `${API_BASE}/en-US/${release.id}/Readme-X3-ENG-${release.version}.txt`;
+      if (!release.txtUrl) {
+        console.warn('No txtUrl for', release.id, '— using demo data');
+        return generateDemoChanges(release);
+      }
       try {
-        const res = await fetch(url, { mode: 'cors' });
-        if (!res.ok) throw new Error('HTTP '+res.status);
+        const res = await fetch(release.txtUrl, { mode: 'cors' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const text = await res.text();
         const changes = Parser.parseReleaseText(text, release.id, release.version);
         setToCache(release.id, changes);
@@ -566,18 +570,11 @@
       return changes;
     }
 
-    /* Build release notes URL for a given change.
-       Pattern: {base}/en-US/{release-id}/index.html#{ticket-anchor}
-       The anchor is the lowercase ticket id with hyphen, e.g. x3-335955 */
+    /* Return the confirmed .txt readme URL for this change's release.
+       URL is stored directly in the registry — no URL construction logic. */
     function releaseNotesUrl(change) {
       const reg = RELEASE_REGISTRY.find(r => r.id === change.release_id);
-      if (!reg) return null;
-      const base = `${RELNOTES_BASE}/en-US/${reg.id}/index.html`;
-      if (change.ticket) {
-        const anchor = change.ticket.toLowerCase().replace(/\s/,'-');
-        return `${base}#${anchor}`;
-      }
-      return base;
+      return reg ? reg.txtUrl : null;
     }
 
     /* Dropdown population */
@@ -647,10 +644,12 @@
     function renderChangeRow(c) {
       const ticketHtml = c.ticket ? `<span class="ticket">${esc(c.ticket)}</span>` : '';
 
-      // Release notes link pill
+      // Release notes link pill — links to the .txt readme (<=33: archived HTM)
+      // Ticket shown in tooltip so user can Ctrl+F directly to it
       const url = releaseNotesUrl(c);
+      const ticketHint = c.ticket ? ` — search for ${c.ticket}` : '';
       const linkHtml = url
-        ? `<a class="relnotes-link" href="${esc(url)}" target="_blank" rel="noopener" title="Open in Sage release notes">${LINK_ICON} Release notes</a>`
+        ? `<a class="relnotes-link" href="${esc(url)}" target="_blank" rel="noopener" title="Open release notes${esc(ticketHint)} (use Ctrl+F to locate the entry)">${LINK_ICON} Release notes</a>`
         : '';
 
       const cls = c.highlight ? 'change-row highlight-row' : 'change-row';
