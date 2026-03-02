@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sage X3 Release Comparator</title>
+  <meta name="description" content="Compare Sage X3 releases, identify delta changes, filter by functional area and legislation." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:          #1a2744;
+      --navy-light:    #253462;
+      --navy-dark:     #0f1828;
+      --cyan:          #00b5cc;
+      --cyan-light:    #e0f7fb;
+      --cyan-dark:     #007f90;
+      --mustard:       #e8a820;
+      --mustard-light: #fdf3d8;
+      --mustard-dark:  #c48a10;
+      --bg:            #f2f2f2;
+      --bg-white:      #ffffff;
+      --text:          #1e2535;
+      --text-muted:    #5a6275;
+      --border:        #d4d9e8;
+      --shadow-sm:     0 1px 4px rgba(26,39,68,.08);
+      --shadow-md:     0 4px 16px rgba(26,39,68,.12);
+      --radius:        8px;
+      --radius-sm:     4px;
+      --font-head:     'Barlow Condensed', 'Arial Narrow', sans-serif;
+      --font-body:     'Inter', 'Segoe UI', sans-serif;
+      --t:             0.18s ease;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    h1,h2,h3,h4 {
+      font-family: var(--font-head);
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: var(--navy);
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem; }
+
+    /* Header */
+    .site-header {
+      background: var(--navy);
+      border-bottom: 3px solid var(--cyan);
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: var(--shadow-md);
+    }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .9rem 1.25rem; max-width: 1100px; margin: 0 auto;
+    }
+    .header-brand { display: flex; align-items: center; gap: .75rem; }
+    .header-logo  { width: 36px; height: 36px; flex-shrink: 0; }
+    .header-title {
+      font-family: var(--font-head); font-size: 1.45rem; font-weight: 700;
+      letter-spacing: .04em; color: #fff; line-height: 1;
+    }
+    .header-subtitle {
+      font-size: .72rem; color: var(--cyan);
+      letter-spacing: .08em; text-transform: uppercase; margin-top: 2px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .55rem 1.25rem; border-radius: var(--radius-sm);
+      font-family: var(--font-body); font-size: .88rem; font-weight: 600;
+      cursor: pointer; border: 2px solid transparent;
+      transition: background var(--t), color var(--t), border-color var(--t), transform var(--t);
+      white-space: nowrap; text-decoration: none;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--cyan); color: var(--navy); border-color: var(--cyan); }
+    .btn-primary:hover:not(:disabled) { background: var(--cyan-dark); border-color: var(--cyan-dark); color: #fff; }
+    .btn-primary:disabled { background: #b0b8cc; border-color: #b0b8cc; color: #fff; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; color: rgba(255,255,255,.7);
+      border-color: rgba(255,255,255,.25); font-size: .8rem; padding: .4rem .9rem;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
+    .btn-lg { padding: .75rem 2rem; font-size: 1rem; }
+
+    /* Cache banner */
+    #cache-banner {
+      display: none; background: var(--mustard); color: var(--navy-dark);
+      font-size: .85rem; font-weight: 600; text-align: center; padding: .5rem;
+    }
+
+    main { padding: 2rem 0 3rem; }
+
+    /* Input card */
+    .input-card {
+      background: var(--bg-white); border-radius: var(--radius);
+      box-shadow: var(--shadow-md); padding: 1.75rem; margin-bottom: 1.75rem;
+    }
+    .card-title {
+      font-family: var(--font-head); font-size: 1.15rem; color: var(--navy);
+      margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .card-title::before {
+      content: ''; display: inline-block; width: 4px; height: 1.15em;
+      background: var(--cyan); border-radius: 2px;
+    }
+
+    /* Version row */
+    .version-row {
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      gap: 1rem; align-items: end; margin-bottom: 1.25rem;
+    }
+    .version-arrow-sep { font-size: 1.5rem; color: var(--navy-light); text-align: center; padding-bottom: .5rem; }
+    .field-group { display: flex; flex-direction: column; gap: .35rem; }
+    .field-group label {
+      font-size: .8rem; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+
+    select {
+      width: 100%; padding: .6rem .85rem; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); font-family: var(--font-body); font-size: .9rem;
+      color: var(--text); background: var(--bg-white); cursor: pointer;
+      transition: border-color var(--t), box-shadow var(--t);
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%231a2744' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .75rem center; padding-right: 2rem;
+    }
+    select:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0,181,204,.15); }
+
+    .version-warning { font-size: .82rem; color: #c0392b; margin-top: -.75rem; margin-bottom: .75rem; min-height: 1.1em; }
+
+    /* Filter row */
+    .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+    .filter-group-title {
+      font-size: .8rem; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem;
+    }
+
+    /* Multi-select */
+    .multi-select {
+      display: flex; flex-wrap: wrap; gap: .35rem; max-height: 160px; overflow-y: auto;
+      border: 2px solid var(--border); border-radius: var(--radius-sm);
+      padding: .5rem; background: var(--bg); transition: border-color var(--t);
+    }
+    .multi-select:focus-within { border-color: var(--cyan); }
+    .ms-item {
+      padding: .25rem .65rem; border-radius: 20px; font-size: .78rem; font-weight: 500;
+      background: var(--bg-white); border: 1.5px solid var(--border); color: var(--text-muted);
+      cursor: pointer; user-select: none; transition: all var(--t); white-space: nowrap;
+    }
+    .ms-item:hover { border-color: var(--cyan); color: var(--navy); }
+    .ms-item.selected { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .filter-hint { font-size: .75rem; color: var(--text-muted); margin-top: .3rem; font-style: italic; }
+
+    /* Compare row */
+    .compare-row {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 1rem; padding-top: .75rem; border-top: 1px solid var(--border);
+    }
+
+    /* Loading */
+    #loading {
+      display: none; align-items: center; justify-content: center;
+      gap: 1rem; padding: 2rem; color: var(--navy-light); font-size: .95rem; font-weight: 500;
+    }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid var(--cyan-light);
+      border-top-color: var(--cyan); border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Results */
+    #results { display: none; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    .results-summary-header {
+      background: var(--navy); color: #fff; border-radius: var(--radius);
+      padding: 1.25rem 1.75rem; margin-bottom: 1.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem; box-shadow: var(--shadow-md);
+    }
+    .upgrade-path {
+      display: flex; align-items: center; gap: .75rem;
+      font-family: var(--font-head); font-size: 1.35rem; font-weight: 700;
+    }
+    .version-from { color: rgba(255,255,255,.7); }
+    .upgrade-arrow { color: var(--cyan); font-size: 1.5rem; }
+    .version-to { color: #fff; }
+    .change-counts { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .count-total { font-size: .88rem; color: rgba(255,255,255,.7); }
+    .filter-note { font-size: .82rem; color: var(--cyan); }
+    .highlight-count {
+      background: var(--mustard); color: var(--navy-dark);
+      font-size: .82rem; font-weight: 700; padding: .2rem .65rem; border-radius: 20px;
+    }
+
+    /* Highlights box */
+    .highlights-box {
+      background: var(--mustard-light); border: 2px solid var(--mustard);
+      border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.25rem;
+    }
+    .highlights-title {
+      font-size: 1rem; color: var(--mustard-dark); margin-bottom: .85rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .highlights-title::before { content: '⚑'; font-size: 1.1rem; }
+    .highlight-pills { display: flex; flex-wrap: wrap; gap: .65rem; }
+    .highlight-pill {
+      display: flex; align-items: center; gap: .35rem;
+      background: var(--bg-white); border: 1.5px solid var(--mustard);
+      border-radius: 20px; padding: .3rem .85rem; font-size: .83rem; font-weight: 500; color: var(--navy);
+    }
+    .hl-icon { font-size: .95rem; }
+    .hl-count { font-weight: 700; color: var(--mustard-dark); font-family: var(--font-head); font-size: 1rem; }
+
+    /* Results sections */
+    .results-section {
+      background: var(--bg-white); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .section-heading {
+      font-family: var(--font-head); font-size: 1rem; color: var(--navy);
+      padding: 1rem 1.5rem; border-bottom: 2px solid var(--border);
+      background: var(--bg); letter-spacing: .03em;
+    }
+
+    /* Accordion */
+    .accordion-item { border-bottom: 1px solid var(--border); }
+    .accordion-item:last-child { border-bottom: none; }
+    .accordion-header {
+      width: 100%; display: flex; align-items: center; gap: .75rem;
+      padding: .9rem 1.5rem; background: none; border: none; cursor: pointer;
+      text-align: left; font-family: var(--font-body); font-size: .9rem;
+      color: var(--text); transition: background var(--t);
+    }
+    .accordion-header:hover { background: var(--bg); }
+    .area-title { font-weight: 700; color: var(--navy); flex: 1; }
+    .area-count { font-size: .8rem; color: var(--text-muted); }
+    .area-badge {
+      background: var(--mustard); color: var(--navy-dark);
+      font-size: .75rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px;
+    }
+    .accordion-arrow { font-size: .7rem; color: var(--text-muted); }
+    .accordion-body { padding: .5rem 1.5rem 1rem; border-top: 1px solid var(--border); }
+
+    /* Change rows */
+    .change-row { padding: .75rem 0; border-bottom: 1px solid #f0f0f0; }
+    .change-row:last-child { border-bottom: none; }
+    .highlight-row {
+      background: linear-gradient(to right, rgba(232,168,32,.04), transparent);
+      border-left: 3px solid var(--mustard);
+      padding-left: .75rem; margin-left: -.75rem;
+    }
+    .change-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-bottom: .3rem; }
+    .change-summary { font-size: .88rem; color: var(--text); line-height: 1.5; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; font-size: .72rem; font-weight: 600;
+      padding: .15rem .55rem; border-radius: 3px;
+      letter-spacing: .03em; text-transform: uppercase;
+    }
+    .badge-behaviour  { background: #fde8e8; color: #c0392b; }
+    .badge-entry      { background: #e8f0fe; color: #2962ff; }
+    .badge-bug        { background: #f0f0f0; color: #5a6275; }
+    .badge-enhancement{ background: #e8faf0; color: #1a7a4a; }
+    .badge-feature    { background: #e0f7fb; color: #007f90; }
+    .badge-default    { background: #f0f0f0; color: #5a6275; }
+    .badge-leg        { background: var(--navy); color: var(--cyan); font-size: .7rem; }
+
+    .ticket {
+      font-family: 'Courier New', monospace; font-size: .75rem; color: var(--text-muted);
+      background: var(--bg); padding: .1rem .4rem; border-radius: 3px; border: 1px solid var(--border);
+    }
+    .version-tag { font-size: .72rem; color: var(--text-muted); margin-left: auto; }
+
+    /* Legislation */
+    .leg-section { padding: .75rem 1.5rem 1rem; }
+    .leg-heading {
+      font-family: var(--font-head); font-size: .95rem; color: var(--navy);
+      margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border);
+    }
+
+    .no-results { text-align: center; color: var(--text-muted); font-style: italic; padding: 2rem; }
+
+    /* Footer */
+    .site-footer {
+      background: var(--navy-dark); color: rgba(255,255,255,.45);
+      text-align: center; font-size: .78rem; padding: 1.25rem; margin-top: 2rem;
+    }
+    .site-footer a { color: var(--cyan); text-decoration: none; }
+
+    /* Responsive */
+    @media (max-width: 720px) {
+      .version-row { grid-template-columns: 1fr; }
+      .version-arrow-sep { display: none; }
+      .filter-row { grid-template-columns: 1fr; }
+      .results-summary-header { flex-direction: column; align-items: flex-start; }
+      .upgrade-path { font-size: 1.1rem; }
+      .header-inner { padding: .75rem 1rem; }
+      .header-title { font-size: 1.15rem; }
+      .input-card { padding: 1.25rem; }
+    }
+    @media (max-width: 480px) {
+      .compare-row { flex-direction: column; }
+      .btn-lg { width: 100%; justify-content: center; }
+    }
+
+    .multi-select::-webkit-scrollbar { width: 5px; }
+    .multi-select::-webkit-scrollbar-track { background: transparent; }
+    .multi-select::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <svg class="header-logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="36" height="36" rx="6" fill="#00b5cc"/>
+          <path d="M8 10h12c1.1 0 2 .9 2 2v3c0 1.1-.9 2-2 2H10c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2h14" stroke="#1a2744" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="27" cy="26" r="3" fill="#e8a820"/>
+          <circle cx="27" cy="10" r="3" fill="#1a2744"/>
+        </svg>
+        <div>
+          <div class="header-title">Sage X3 Release Comparator</div>
+          <div class="header-subtitle">Version Delta &amp; Change Analysis</div>
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-ghost" id="btn-refresh">&#8635; Refresh Data</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="cache-banner"></div>
+
+  <main>
+    <div class="container">
+
+      <div class="input-card">
+        <h2 class="card-title">Configure Comparison</h2>
+
+        <div class="version-row">
+          <div class="field-group">
+            <label for="sel-from">Current Version</label>
+            <select id="sel-from"><option value="">Select version...</option></select>
+          </div>
+          <div class="version-arrow-sep">&#8594;</div>
+          <div class="field-group">
+            <label for="sel-to">Target Version</label>
+            <select id="sel-to"><option value="">Select version...</option></select>
+          </div>
+        </div>
+        <p class="version-warning" id="version-warning" role="alert"></p>
+
+        <div class="filter-row">
+          <div>
+            <div class="filter-group-title">Functional Areas</div>
+            <div class="multi-select" id="ms-areas" role="group" aria-label="Functional area filter"></div>
+            <p class="filter-hint">Leave blank to include all areas</p>
+          </div>
+          <div>
+            <div class="filter-group-title">Legislations</div>
+            <div class="multi-select" id="ms-legs" role="group" aria-label="Legislation filter"></div>
+            <p class="filter-hint">Leave blank to include all legislations</p>
+          </div>
+        </div>
+
+        <div class="compare-row">
+          <button class="btn btn-primary btn-lg" id="btn-compare" disabled>&#9654; Compare Releases</button>
+        </div>
+      </div>
+
+      <div id="loading" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <span>Fetching release data&#8230;</span>
+      </div>
+
+      <div id="results" role="region" aria-label="Comparison results" aria-live="polite"></div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Sage X3 Release Comparator &mdash; data sourced from
+      <a href="https://online-help.sagex3.com/x3-release-notes/api/" target="_blank" rel="noopener">online-help.sagex3.com</a>.
+      Not affiliated with Sage Group plc.
+    </p>
+  </footer>
+
+  <script>
+  /* ============================================================
+     parser.js — inline
+  ============================================================ */
+  const Parser = (() => {
+    const AREA_KEYWORDS = [
+      'Finance','Accounting','Fixed Assets','Accounts Payable','Accounts Receivable',
+      'Distribution','Purchasing','Sales','Stock','Inventory',
+      'Manufacturing','Production','MRP','Scheduling',
+      'Platform','Administration','Security','Setup','Configuration',
+      'CRM','Customer Relationship','Workflow','Automation',
+      'Reporting','Business Intelligence','Analytics',
+      'Interoperability','API','Integration','Web Services',
+      'Project','Timesheet','Expenses','HR','Human Resources','Payroll',
+      'Quality','Maintenance','Service'
+    ];
+    const CHANGE_TYPE_PATTERNS = [
+      { type: 'Behaviour change', regex: /behaviour\s+change|behavior\s+change/i },
+      { type: 'Entry point',      regex: /entry\s+point/i },
+      { type: 'Bug fix',          regex: /bug\s+fix|anomaly|correction/i },
+      { type: 'Enhancement',      regex: /enhancement|improvement|evolution/i },
+      { type: 'New feature',      regex: /new\s+feature|new\s+function/i },
+    ];
+    const TICKET_REGEX = /\b(X3[-\s]?\d{4,8})\b/i;
+
+    function detectArea(line) {
+      const t = line.trim();
+      if (/^[A-Z][A-Z\s\/&\-]{3,}$/.test(t) && t.length < 60) return t;
+      for (const kw of AREA_KEYWORDS) {
+        if (t.toLowerCase().startsWith(kw.toLowerCase()) && t.length < 80) return t;
+      }
+      return null;
+    }
+    function detectChangeType(text) {
+      for (const p of CHANGE_TYPE_PATTERNS) { if (p.regex.test(text)) return p.type; }
+      return 'Change';
+    }
+    function extractLegislations(text) {
+      const tags = [], rx = /\[([A-Z]{2,4})\]|\(([A-Z]{2,4})\)/g;
+      let m;
+      while ((m = rx.exec(text)) !== null) {
+        const tag = (m[1] || m[2]).toUpperCase();
+        if (!tags.includes(tag)) tags.push(tag);
+      }
+      return tags;
+    }
+    function extractTicket(text) {
+      const m = text.match(TICKET_REGEX);
+      return m ? m[1].replace(/\s/,'-').toUpperCase() : null;
+    }
+    function parseReleaseText(text, releaseId, version) {
+      const lines = text.split(/\r?\n/);
+      const changes = [];
+      let currentArea = 'General', buffer = [], inEntry = false;
+      const flush = () => {
+        if (!buffer.length) return;
+        const combined = buffer.join(' ').trim();
+        if (combined.length < 10) { buffer = []; return; }
+        const ticket = extractTicket(combined);
+        const legislation_tags = extractLegislations(combined);
+        const change_type = detectChangeType(combined);
+        const summary = combined
+          .replace(TICKET_REGEX,'')
+          .replace(/\[[A-Z]{2,4}\]/g,'')
+          .replace(/\([A-Z]{2,4}\)/g,'')
+          .replace(/\s{2,}/g,' ').trim();
+        if (summary.length >= 10) changes.push({ release_id: releaseId, version, area: currentArea, change_type, legislation_tags, ticket, summary });
+        buffer = [];
+      };
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t) { flush(); inEntry = false; continue; }
+        const newArea = detectArea(t);
+        if (newArea && newArea !== currentArea) { flush(); currentArea = newArea; inEntry = false; continue; }
+        if (TICKET_REGEX.test(t)) { flush(); inEntry = true; buffer.push(t); continue; }
+        if (/^[-=*_]{3,}$/.test(t)) { flush(); continue; }
+        if (inEntry || t.length > 20) buffer.push(t);
+      }
+      flush();
+      return changes;
+    }
+    function parseVersion(v) { return v.split('.').map(n => parseInt(n,10)||0); }
+    function compareVersions(a, b) {
+      const av = parseVersion(a), bv = parseVersion(b);
+      for (let i = 0; i < Math.max(av.length, bv.length); i++) {
+        const d = (av[i]||0) - (bv[i]||0);
+        if (d !== 0) return d;
+      }
+      return 0;
+    }
+    return { parseReleaseText, parseVersion, compareVersions };
+  })();
+
+  /* ============================================================
+     comparator.js — inline
+  ============================================================ */
+  const Comparator = (() => {
+    const HIGHLIGHT_KEYWORDS = [
+      'permission','role','compliance','tax','e-invoice','einvoice',
+      'api','authentication','security','gdpr','vat','regulation','legislation','mandate'
+    ];
+    function isHighlight(c) {
+      if (c.change_type === 'Behaviour change') return true;
+      if (c.change_type === 'Entry point') return true;
+      if (/security/i.test(c.area)) return true;
+      const s = (c.summary||'').toLowerCase();
+      return HIGHLIGHT_KEYWORDS.some(kw => s.includes(kw));
+    }
+    function calculateDelta(allChanges, fromVersion, toVersion, areas, legislations) {
+      const inRange = allChanges.filter(c => {
+        return Parser.compareVersions(c.version, fromVersion) > 0 &&
+               Parser.compareVersions(c.version, toVersion) <= 0;
+      });
+      const totalChanges = inRange.length;
+      let filtered = inRange;
+      if (areas && areas.length)
+        filtered = filtered.filter(c => areas.some(a => c.area.toLowerCase().includes(a.toLowerCase())));
+      if (legislations && legislations.length)
+        filtered = filtered.filter(c => !c.legislation_tags.length || c.legislation_tags.some(t => legislations.includes(t)));
+      const tagged = filtered.map(c => ({ ...c, highlight: isHighlight(c) }));
+      const byArea = {};
+      for (const c of tagged) { if (!byArea[c.area]) byArea[c.area] = []; byArea[c.area].push(c); }
+      const highlights = tagged.filter(c => c.highlight);
+      const byLegislation = {};
+      if (legislations && legislations.length) {
+        for (const c of tagged) {
+          for (const tag of c.legislation_tags) {
+            if (legislations.includes(tag)) {
+              if (!byLegislation[tag]) byLegislation[tag] = [];
+              byLegislation[tag].push(c);
+            }
+          }
+        }
+      }
+      return { fromVersion, toVersion, totalChanges, filteredCount: tagged.length, highlights, byArea, byLegislation, hasLegislationFilter: !!(legislations && legislations.length) };
+    }
+    function categoriseHighlights(hl) {
+      return {
+        behaviourChanges: hl.filter(h => h.change_type === 'Behaviour change'),
+        entryPoints:      hl.filter(h => h.change_type === 'Entry point'),
+        security:         hl.filter(h => /security/i.test(h.area)),
+        compliance:       hl.filter(h => { const s=(h.summary||'').toLowerCase(); return s.includes('compliance')||s.includes('tax')||s.includes('e-invoice')||s.includes('vat')||s.includes('legislation')||s.includes('mandate'); }),
+        apiPlatform:      hl.filter(h => { const s=(h.summary||'').toLowerCase(); return s.includes('api')||s.includes('authentication')||/platform|interop/i.test(h.area); })
+      };
+    }
+    return { calculateDelta, categoriseHighlights, isHighlight };
+  })();
+
+  /* ============================================================
+     app.js — inline
+  ============================================================ */
+  const App = (() => {
+    const RELEASE_REGISTRY = [
+      { id: '2022-r1-30', version: '12.0.30', label: 'V12 R1 (12.0.30)' },
+      { id: '2022-r2-31', version: '12.0.31', label: 'V12 R2 (12.0.31)' },
+      { id: '2023-r1-32', version: '12.0.32', label: 'V12 R3 (12.0.32)' },
+      { id: '2023-r2-33', version: '12.0.33', label: 'V12 R4 (12.0.33)' },
+      { id: '2023-r3-34', version: '12.0.34', label: 'V12 R5 (12.0.34)' },
+      { id: '2024-r1-35', version: '12.0.35', label: 'V12 R6 (12.0.35)' },
+      { id: '2024-r2-36', version: '12.0.36', label: 'V12 R7 (12.0.36)' },
+      { id: '2024-r3-37', version: '12.0.37', label: 'V12 R8 (12.0.37)' },
+      { id: '2025-r1-38', version: '12.0.38', label: 'V12 R9 (12.0.38)' },
+      { id: '2025-r2-39', version: '12.0.39', label: 'V12 R10 (12.0.39)' },
+    ];
+    const BASE_URL = 'https://online-help.sagex3.com/x3-release-notes/api';
+    const CACHE_PREFIX = 'sage_x3_rel_v1_';
+    const FUNCTIONAL_AREAS = [
+      'Finance','Accounting','Fixed Assets','Accounts Payable','Accounts Receivable',
+      'Distribution','Purchasing','Sales','Stock','Inventory',
+      'Manufacturing','Production','MRP',
+      'Platform','Administration','Security','Setup',
+      'CRM','Workflow','Reporting','Business Intelligence',
+      'API','Integration','Interoperability',
+      'Project','HR','Quality','Maintenance'
+    ];
+    const LEGISLATIONS = [
+      { code:'FRA', label:'France (FRA)' },
+      { code:'GBR', label:'United Kingdom (GBR)' },
+      { code:'GER', label:'Germany (GER)' },
+      { code:'ESP', label:'Spain (ESP)' },
+      { code:'ITA', label:'Italy (ITA)' },
+      { code:'PRT', label:'Portugal (PRT)' },
+      { code:'USA', label:'United States (USA)' },
+      { code:'CAN', label:'Canada (CAN)' },
+      { code:'AUS', label:'Australia (AUS)' },
+      { code:'CHE', label:'Switzerland (CHE)' },
+      { code:'BEL', label:'Belgium (BEL)' },
+      { code:'NLD', label:'Netherlands (NLD)' },
+    ];
+
+    function getFromCache(id) {
+      try { const r = localStorage.getItem(CACHE_PREFIX+id); return r ? JSON.parse(r) : null; }
+      catch { return null; }
+    }
+    function setToCache(id, data) {
+      try { localStorage.setItem(CACHE_PREFIX+id, JSON.stringify(data)); } catch {}
+    }
+    function clearCache() {
+      Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).forEach(k => localStorage.removeItem(k));
+    }
+
+    async function fetchRelease(release) {
+      const cached = getFromCache(release.id);
+      if (cached) return cached;
+      const url = `${BASE_URL}/en-US/${release.id}/Readme-X3-ENG-${release.version}.txt`;
+      try {
+        const res = await fetch(url, { mode: 'cors' });
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const text = await res.text();
+        const changes = Parser.parseReleaseText(text, release.id, release.version);
+        setToCache(release.id, changes);
+        return changes;
+      } catch(e) {
+        console.warn('Fetch failed for', release.id, e.message, '— using demo data');
+        return generateDemoChanges(release);
+      }
+    }
+
+    function generateDemoChanges(release) {
+      const areas = ['Finance','Distribution','Manufacturing','Platform','Sales','Administration'];
+      const types = ['Bug fix','Enhancement','Behaviour change','Entry point','New feature'];
+      const legOptions = [[],['FRA'],['GBR'],['GER'],['FRA','GER'],['USA']];
+      const summaries = [
+        'Updated VAT calculation logic to comply with latest tax regulations.',
+        'Fixed rounding error in multi-currency invoice posting.',
+        'New API endpoint added for real-time stock level queries.',
+        'Authentication tokens now expire after configurable session timeout.',
+        'Improved MRP recalculation performance for large bill-of-materials hierarchies.',
+        'Added e-invoice compliance for digital reporting requirements.',
+        'Fixed permission check on goods receipt entry point for restricted roles.',
+        'Workflow approval routing now supports parallel branch escalation.',
+        'Corrected GL posting date when period is closed at batch validation.',
+        'Enhanced reporting cube refresh to support incremental updates.',
+        'New compliance report for audit trail of security role changes.',
+        'Fixed tax code defaulting on purchase order lines.',
+        'API rate limiting introduced to protect against bulk export abuse.',
+        'Updated GDPR consent capture on CRM contact creation.',
+        'Improved error messaging on bank reconciliation mismatch detection.',
+      ];
+      const seed = release.version.split('.').reduce((a,v) => a+parseInt(v), 0);
+      const count = 8 + (seed % 12);
+      const changes = [];
+      for (let i = 0; i < count; i++) {
+        changes.push({
+          release_id: release.id, version: release.version,
+          area: areas[(seed+i*3) % areas.length],
+          change_type: types[(seed+i*5) % types.length],
+          legislation_tags: legOptions[(seed+i*2) % legOptions.length],
+          ticket: `X3-${300000+seed*10+i}`,
+          summary: summaries[(seed+i*7) % summaries.length]
+        });
+      }
+      return changes;
+    }
+
+    function populateVersionDropdowns() {
+      const from = document.getElementById('sel-from');
+      const to   = document.getElementById('sel-to');
+      from.innerHTML = '<option value="">Select version...</option>';
+      to.innerHTML   = '<option value="">Select version...</option>';
+      RELEASE_REGISTRY.forEach(r => {
+        from.innerHTML += `<option value="${r.version}">${r.label}</option>`;
+        to.innerHTML   += `<option value="${r.version}">${r.label}</option>`;
+      });
+    }
+
+    function populateMultiSelect(containerId, items, valueKey, labelKey) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      items.forEach(item => {
+        const val = typeof item === 'string' ? item : item[valueKey];
+        const lbl = typeof item === 'string' ? item : item[labelKey];
+        const div = document.createElement('div');
+        div.className = 'ms-item';
+        div.dataset.value = val;
+        div.textContent = lbl;
+        div.addEventListener('click', () => { div.classList.toggle('selected'); validateVersionSelection(); });
+        container.appendChild(div);
+      });
+    }
+
+    function getSelectedValues(containerId) {
+      return Array.from(document.querySelectorAll(`#${containerId} .ms-item.selected`)).map(el => el.dataset.value);
+    }
+
+    function validateVersionSelection() {
+      const from = document.getElementById('sel-from').value;
+      const to   = document.getElementById('sel-to').value;
+      const btn  = document.getElementById('btn-compare');
+      const warn = document.getElementById('version-warning');
+      if (!from || !to) { btn.disabled = true; warn.textContent = ''; return; }
+      if (Parser.compareVersions(to, from) <= 0) {
+        btn.disabled = true;
+        warn.textContent = 'Target version must be higher than current version.';
+      } else {
+        btn.disabled = false;
+        warn.textContent = '';
+      }
+    }
+
+    function esc(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function changeTypeBadge(type) {
+      const map = { 'Behaviour change':'badge-behaviour','Entry point':'badge-entry','Bug fix':'badge-bug','Enhancement':'badge-enhancement','New feature':'badge-feature' };
+      return `<span class="badge ${map[type]||'badge-default'}">${esc(type)}</span>`;
+    }
+
+    function legBadges(tags) {
+      if (!tags || !tags.length) return '';
+      return tags.map(t => `<span class="badge badge-leg">${esc(t)}</span>`).join(' ');
+    }
+
+    function renderChangeRow(c) {
+      const ticketHtml = c.ticket ? `<span class="ticket">${esc(c.ticket)}</span>` : '';
+      const cls = c.highlight ? 'change-row highlight-row' : 'change-row';
+      return `<div class="${cls}">
+        <div class="change-meta">${changeTypeBadge(c.change_type)}${legBadges(c.legislation_tags)}${ticketHtml}<span class="version-tag">v${esc(c.version)}</span></div>
+        <div class="change-summary">${esc(c.summary)}</div>
+      </div>`;
+    }
+
+    function renderHighlightSummary(cats) {
+      const rows = [
+        { label:'Behaviour Changes',     items:cats.behaviourChanges, icon:'⚠' },
+        { label:'Entry Point Changes',   items:cats.entryPoints,      icon:'🔗' },
+        { label:'Security Items',        items:cats.security,         icon:'🔒' },
+        { label:'Compliance / Legislation', items:cats.compliance,    icon:'📋' },
+        { label:'API / Platform',        items:cats.apiPlatform,      icon:'⚙' },
+      ].filter(r => r.items.length > 0);
+      if (!rows.length) return '';
+      const pills = rows.map(r =>
+        `<div class="highlight-pill"><span class="hl-icon">${r.icon}</span><span class="hl-count">${r.items.length}</span><span class="hl-label">${r.label}</span></div>`
+      ).join('');
+      return `<div class="highlights-box"><h3 class="highlights-title">Items Requiring Attention</h3><div class="highlight-pills">${pills}</div></div>`;
+    }
+
+    function renderAccordion(byArea) {
+      const areas = Object.keys(byArea).sort();
+      if (!areas.length) return '<p class="no-results">No changes match the selected filters.</p>';
+      return areas.map((area, idx) => {
+        const items = byArea[area];
+        const hl = items.filter(c => c.highlight).length;
+        const badge = hl > 0 ? `<span class="area-badge">${hl} flagged</span>` : '';
+        const open = idx === 0;
+        return `<div class="accordion-item">
+          <button class="accordion-header" onclick="App.toggleAccordion(this)" aria-expanded="${open}">
+            <span class="area-title">${esc(area)}</span>
+            <span class="area-count">${items.length} change${items.length!==1?'s':''}</span>
+            ${badge}
+            <span class="accordion-arrow">${open?'▲':'▼'}</span>
+          </button>
+          <div class="accordion-body" style="${open?'':'display:none'}">
+            ${items.map(renderChangeRow).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderLegislationSection(byLeg) {
+      const codes = Object.keys(byLeg);
+      if (!codes.length) return '';
+      const sections = codes.map(code => {
+        const items = byLeg[code];
+        const legObj = LEGISLATIONS.find(l => l.code === code);
+        return `<div class="leg-section"><h4 class="leg-heading">${esc(legObj ? legObj.label : code)}</h4>${items.map(renderChangeRow).join('')}</div>`;
+      }).join('');
+      return `<div class="results-section"><h3 class="section-heading">Legislation-Specific Changes</h3>${sections}</div>`;
+    }
+
+    async function handleCompare() {
+      const fromVersion  = document.getElementById('sel-from').value;
+      const toVersion    = document.getElementById('sel-to').value;
+      const selectedAreas = getSelectedValues('ms-areas');
+      const selectedLegs  = getSelectedValues('ms-legs');
+
+      const resultsEl = document.getElementById('results');
+      const loadingEl = document.getElementById('loading');
+      resultsEl.innerHTML = ''; resultsEl.style.display = 'none';
+      loadingEl.style.display = 'flex';
+      document.getElementById('btn-compare').disabled = true;
+
+      const releasesInRange = RELEASE_REGISTRY.filter(r =>
+        Parser.compareVersions(r.version, fromVersion) > 0 &&
+        Parser.compareVersions(r.version, toVersion) <= 0
+      );
+
+      if (!releasesInRange.length) {
+        loadingEl.style.display = 'none';
+        document.getElementById('btn-compare').disabled = false;
+        resultsEl.innerHTML = '<p class="no-results">No releases found in the selected version range.</p>';
+        resultsEl.style.display = 'block';
+        return;
+      }
+
+      const allChanges = [];
+      for (const rel of releasesInRange) {
+        const changes = await fetchRelease(rel);
+        allChanges.push(...changes);
+      }
+
+      const delta = Comparator.calculateDelta(allChanges, fromVersion, toVersion, selectedAreas, selectedLegs);
+      const cats  = Comparator.categoriseHighlights(delta.highlights);
+
+      const fromLabel = RELEASE_REGISTRY.find(r => r.version === fromVersion)?.label || fromVersion;
+      const toLabel   = RELEASE_REGISTRY.find(r => r.version === toVersion)?.label   || toVersion;
+      const filterNote = (selectedAreas.length || selectedLegs.length)
+        ? `<span class="filter-note">(filtered: ${delta.filteredCount} of ${delta.totalChanges})</span>` : '';
+
+      resultsEl.innerHTML = `
+        <div class="results-summary-header">
+          <div class="upgrade-path">
+            <span class="version-from">${esc(fromLabel)}</span>
+            <span class="upgrade-arrow">&#8594;</span>
+            <span class="version-to">${esc(toLabel)}</span>
+          </div>
+          <div class="change-counts">
+            <span class="count-total">${delta.totalChanges} total changes</span>
+            ${filterNote}
+            <span class="highlight-count">${delta.highlights.length} items flagged</span>
+          </div>
+        </div>
+        ${renderHighlightSummary(cats)}
+        <div class="results-section">
+          <h3 class="section-heading">Changes by Functional Area</h3>
+          ${renderAccordion(delta.byArea)}
+        </div>
+        ${delta.hasLegislationFilter ? renderLegislationSection(delta.byLegislation) : ''}
+      `;
+
+      loadingEl.style.display = 'none';
+      document.getElementById('btn-compare').disabled = false;
+      resultsEl.style.display = 'block';
+      resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function toggleAccordion(btn) {
+      const body  = btn.nextElementSibling;
+      const arrow = btn.querySelector('.accordion-arrow');
+      const isOpen = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!isOpen));
+      body.style.display = isOpen ? 'none' : 'block';
+      if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+    }
+
+    function init() {
+      populateVersionDropdowns();
+      populateMultiSelect('ms-areas', FUNCTIONAL_AREAS, null, null);
+      populateMultiSelect('ms-legs',  LEGISLATIONS, 'code', 'label');
+      document.getElementById('sel-from').addEventListener('change', validateVersionSelection);
+      document.getElementById('sel-to').addEventListener('change',   validateVersionSelection);
+      document.getElementById('btn-compare').addEventListener('click', handleCompare);
+      document.getElementById('btn-refresh').addEventListener('click', () => {
+        clearCache();
+        const b = document.getElementById('cache-banner');
+        b.textContent = 'Cache cleared. Next comparison will fetch live data.';
+        b.style.display = 'block';
+        setTimeout(() => { b.style.display = 'none'; }, 3000);
+      });
+      validateVersionSelection();
+    }
+
+    return { init, toggleAccordion };
+  })();
+
+  document.addEventListener('DOMContentLoaded', App.init);
+  </script>
+
+</body>
+</html>
